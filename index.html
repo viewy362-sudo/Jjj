@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Fleet Commander // Root Purge System</title>
+  <style>
+    :root {
+      --bg-dark: #070a10;
+      --card-bg: rgba(13, 20, 33, 0.95);
+      --border-color: #1a2638;
+      --accent-neon: #00ff66;
+      --accent-cyan: #00e5ff;
+      --accent-red: #ff3366;
+      --accent-amber: #ffb703;
+      --text-main: #f1f5f9;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Consolas', 'Courier New', monospace;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(rgba(0, 229, 255, 0.04) 1px, transparent 0);
+      background-size: 20px 20px;
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .svg-icon {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    .svg-icon-lg {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: rgba(7, 10, 16, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--accent-cyan);
+    }
+
+    .status-pulse {
+      width: 10px;
+      height: 10px;
+      background: var(--accent-neon);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-neon);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.85); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-tag {
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      background: rgba(0, 229, 255, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 229, 255, 0.2);
+    }
+
+    .menu-btn {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .menu-btn:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Sidebar Drawer */
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 90;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: -320px;
+      width: 300px;
+      height: 100%;
+      background: #090e17;
+      border-left: 1px solid var(--border-color);
+      z-index: 100;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sidebar.open {
+      transform: translateX(-320px);
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .sidebar-item:hover, .sidebar-item.active {
+      background: rgba(0, 229, 255, 0.08);
+      color: var(--accent-cyan);
+      border-color: rgba(0, 229, 255, 0.25);
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: 10px 0;
+    }
+
+    /* Main Viewports */
+    main {
+      flex: 1;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+
+    .view-section {
+      display: none;
+      animation: fadeIn 0.25s ease forwards;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .terminal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      color: var(--accent-cyan);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .field-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      background: #05080f;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 11px 14px;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.15);
+    }
+
+    .input-hint {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .btn-container {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 9px 15px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--accent-cyan);
+      color: #070a10;
+    }
+
+    .btn-primary:hover {
+      background: #33ebff;
+    }
+
+    .btn-danger {
+      background: rgba(255, 51, 102, 0.08);
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .btn-danger:hover {
+      background: var(--accent-red);
+      color: #ffffff;
+    }
+
+    .btn-secondary {
+      background: #162032;
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: #1e2d44;
+    }
+
+    .btn-info {
+      background: rgba(0, 229, 255, 0.1);
+      border-color: rgba(0, 229, 255, 0.3);
+      color: var(--accent-cyan);
+    }
+
+    .btn-info:hover {
+      background: var(--accent-cyan);
+      color: #070a10;
+    }
+
+    /* Client Fleet Cards */
+    .client-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .client-node {
+      background: #090e18;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.2s;
+    }
+
+    .client-node:hover {
+      border-color: #263852;
+    }
+
+    .client-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .client-title-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .client-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      font-size: 0.68rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .badge-ok {
+      background: rgba(0, 255, 102, 0.12);
+      color: var(--accent-neon);
+      border: 1px solid var(--accent-neon);
+    }
+
+    .badge-err {
+      background: rgba(255, 183, 3, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid var(--accent-amber);
+    }
+
+    .badge-fail {
+      background: rgba(255, 51, 102, 0.15);
+      color: var(--accent-red);
+      border: 1px solid var(--accent-red);
+    }
+
+    .badge-wait {
+      background: rgba(100, 116, 139, 0.2);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+    }
+
+    .detail-box {
+      background: #04070d;
+      border: 1px solid #141f30;
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.74rem;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-key {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .detail-val {
+      color: var(--text-main);
+      text-align: right;
+      word-break: break-all;
+    }
+
+    .error-console {
+      background: rgba(255, 51, 102, 0.08);
+      border: 1px dashed var(--accent-red);
+      border-radius: 4px;
+      padding: 8px 10px;
+      color: #fca5a5;
+      font-size: 0.72rem;
+      line-height: 1.4;
+    }
+
+    .node-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    /* Terminal Console */
+    .log-terminal {
+      background: #030509;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      padding-bottom: 4px;
+    }
+
+    /* Modal for Wiped Data Inspector */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(5px);
+      z-index: 200;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #090e18;
+      border: 1px solid var(--accent-cyan);
+      border-radius: 10px;
+      width: 100%;
+      max-width: 650px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 30px rgba(0, 229, 255, 0.2);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    pre.json-viewer {
+      background: #030509;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      color: var(--accent-neon);
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    /* User Authentication Modal Overlay */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 5, 9, 0.96);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .auth-box {
+      background: #0a0f19;
+      border: 1px solid var(--accent-cyan);
+      box-shadow: 0 0 40px rgba(0, 229, 255, 0.2);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 400px;
+      padding: 28px 24px;
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .auth-title {
+      font-size: 1.1rem;
+      color: var(--accent-cyan);
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .auth-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: 0.2s;
+    }
+
+    .auth-tab.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+      font-weight: bold;
+    }
+
+    .auth-error {
+      background: rgba(255, 51, 102, 0.1);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    /* Lockdown Banner */
+    .system-announcement-bar {
+      display: none;
+      background: rgba(255, 183, 3, 0.15);
+      border-bottom: 1px solid var(--accent-amber);
+      color: var(--accent-amber);
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      text-align: center;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Force Update / Lockdown Announcement -->
+  <div id="announcement-bar" class="system-announcement-bar"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <span class="status-pulse"></span>
+      <span>FIREBASE FLEET COMMANDER</span>
+    </div>
+    <div class="header-actions">
+      <span id="active-user-badge" class="user-tag" style="display:none;">USER: <b id="current-username"></b></span>
+      <button class="menu-btn" onclick="toggleSidebar(true)" aria-label="Toggle Navigation">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar Drawer -->
+  <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar(false)"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div style="color: var(--accent-cyan); font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16h2v2h-2zm0-6h2v4h-2z"/></svg>
+        CONTROL MATRIX
+      </div>
+      <button class="menu-btn" onclick="toggleSidebar(false)" style="padding: 4px 8px;">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-item active" onclick="switchDashboard('view-status')">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+        System Diagnostics
+      </li>
+      <li class="sidebar-item" onclick="switchDashboard('view-clients')">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6h16v10H4zm18-2H2v14h7v2H7v2h10v-2h-2v-2h7V4z"/></svg>
+        Client Fleet (<span id="menu-client-count">0</span>)
+      </li>
+      <li class="sidebar-item" onclick="switchDashboard('view-add')">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Register Client
+      </li>
+      <li class="sidebar-item" onclick="switchDashboard('view-logs')">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        Audit Terminal
+      </li>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Telegram External Links (Loaded from Admin Core) -->
+      <a class="sidebar-item" id="nav-link-channel" href="https://t.me/your_channel_link" target="_blank" rel="noopener">
+        <svg class="svg-icon" style="color: var(--accent-cyan);" viewBox="0 0 24 24">
+          <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
+        </svg>
+        Join Telegram Channel
+      </a>
+      <a class="sidebar-item" id="nav-link-admin" href="https://t.me/your_admin_username" target="_blank" rel="noopener">
+        <svg class="svg-icon" style="color: var(--accent-neon);" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+        </svg>
+        Developer Contact
+      </a>
+
+      <div class="sidebar-divider"></div>
+      
+      <li class="sidebar-item" onclick="logoutUser()" style="color: var(--accent-red);">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+        Disconnect / Sign Out
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Viewports -->
+  <main>
+    
+    <!-- View 1: System Metrics & Diagnostics (First Landing View) -->
+    <section id="view-status" class="view-section active">
+      <div class="terminal-card">
+        <h2 class="card-title">
+          <svg class="svg-icon-lg" style="color: var(--accent-cyan);" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+          System Diagnostics & Overview
+        </h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 14px;">
+          
+          <div style="background: #04070d; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">
+              <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6h16v10H4zm18-2H2v14h7v2H7v2h10v-2h-2v-2h7V4z"/></svg>
+              Total Clients
+            </div>
+            <div style="font-size: 1.6rem; color: var(--accent-cyan); font-weight: bold; margin-top: 6px;" id="metric-clients">0</div>
+          </div>
+
+          <div style="background: #04070d; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">
+              <svg class="svg-icon" style="color: var(--accent-neon);" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Total Success
+            </div>
+            <div style="font-size: 1.6rem; color: var(--accent-neon); font-weight: bold; margin-top: 6px;" id="metric-success">0</div>
+          </div>
+
+          <div style="background: #04070d; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">
+              <svg class="svg-icon" style="color: var(--accent-amber);" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              Total Errors
+            </div>
+            <div style="font-size: 1.6rem; color: var(--accent-amber); font-weight: bold; margin-top: 6px;" id="metric-errors">0</div>
+          </div>
+
+          <div style="background: #04070d; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">
+              <svg class="svg-icon" style="color: var(--accent-red);" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              Total Failed
+            </div>
+            <div style="font-size: 1.6rem; color: var(--accent-red); font-weight: bold; margin-top: 6px;" id="metric-failed">0</div>
+          </div>
+
+        </div>
+
+        <div class="btn-container" style="margin-top: 24px;">
+          <button class="btn btn-primary" onclick="switchDashboard('view-clients')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6h16v10H4zm18-2H2v14h7v2H7v2h10v-2h-2v-2h7V4z"/></svg>
+            Open Fleet Nodes
+          </button>
+          <button class="btn btn-secondary" onclick="switchDashboard('view-add')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Register New Node
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 2: Client Fleet Grid -->
+    <section id="view-clients" class="view-section">
+      <div class="terminal-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 class="card-title" style="margin: 0;">
+            <svg class="svg-icon-lg" style="color: var(--accent-cyan);" viewBox="0 0 24 24"><path d="M4 6h16v10H4zm18-2H2v14h7v2H7v2h10v-2h-2v-2h7V4z"/></svg>
+            Active Fleet Instances (<span id="nodes-count-display">0</span>)
+          </h2>
+        </div>
+        <div class="client-grid" id="client-cards-container"></div>
+      </div>
+    </section>
+
+    <!-- View 3: Register / Edit Client Form -->
+    <section id="view-add" class="view-section">
+      <div class="terminal-card">
+        <h2 class="card-title" id="form-header">
+          <svg class="svg-icon-lg" style="color: var(--accent-cyan);" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Register Firebase Database
+        </h2>
+        <input type="hidden" id="edit-client-id" value="">
+        
+        <div class="field-group">
+          <label>
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+            Client / Identifier Label
+          </label>
+          <input type="text" id="client-name" placeholder="e.g. Enterprise Main Production">
+        </div>
+
+        <div class="field-group">
+          <label>
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+            Firebase Realtime Database URL
+          </label>
+          <input type="text" id="client-url" placeholder="https://your-database-name.firebaseio.com">
+          <div class="input-hint">Root URL of the Realtime Database instance.</div>
+        </div>
+
+        <div class="field-group">
+          <label>
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            Database Secret / Master Auth Key (Optional)
+          </label>
+          <input type="text" id="client-key" placeholder="Leave empty if Security Rules are public (.write: true)">
+          <div class="input-hint">Required only if rules are protected with master secret keys.</div>
+        </div>
+
+        <div class="btn-container">
+          <button class="btn btn-primary" id="btn-save" onclick="handleSaveClient()">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+            Save Client
+          </button>
+          <button class="btn btn-secondary" id="btn-cancel" style="display:none;" onclick="cancelEdit()">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 4: Execution Audit Terminal -->
+    <section id="view-logs" class="view-section">
+      <div class="terminal-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <h2 class="card-title" style="margin: 0;">
+            <svg class="svg-icon-lg" style="color: var(--accent-cyan);" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            Purge Execution Log
+          </h2>
+          <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.72rem;" onclick="clearLogs()">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            Clear Terminal
+          </button>
+        </div>
+        <div class="log-terminal" id="terminal-feed"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Wiped Data Inspection Modal -->
+  <div class="modal-overlay" id="inspectModal" onclick="closeModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div style="color: var(--accent-cyan); font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+          <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          <span id="modal-client-title">Purged Data Inspector</span>
+        </div>
+        <button class="menu-btn" onclick="closeModal()" style="padding: 4px 8px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;" id="modal-timestamp">Timestamp: --</div>
+        <pre class="json-viewer" id="modal-json-content">// No data logged</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mandatory Authentication Modal Overlay -->
+  <div class="auth-overlay" id="authModal">
+    <div class="auth-box">
+      <div class="auth-header">
+        <div class="status-pulse" style="margin: 0 auto 10px;"></div>
+        <div class="auth-title">TERMINAL ACCESS GATEWAY</div>
+        <div class="auth-subtitle">Fleet Commander Access Portal</div>
+      </div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="toggleAuthTab('login')">Sign In</div>
+        <div class="auth-tab" id="tab-register" onclick="toggleAuthTab('register')">Register</div>
+      </div>
+      <div class="auth-error" id="auth-error-msg"></div>
+      
+      <div class="field-group">
+        <label>Operator Username</label>
+        <input type="text" id="auth-username" placeholder="Enter username..." autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label>Passcode Key</label>
+        <input type="password" id="auth-password" placeholder="••••••••" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" id="auth-submit-btn" style="width: 100%; justify-content: center; margin-top: 10px;" onclick="handleAuthSubmit()">Authenticate Session</button>
+    </div>
+  </div>
+
+  <script>
+    /* Admin Firebase Synchronization Endpoint Configuration */
+    const FIREBASE_BASE = "https://tttttt-a60f0-default-rtdb.firebaseio.com";
+    const API_KEY = "AIzaSyAoBbTJkz8_lN_i31Jay2drSxM4LuaUbf4";
+
+    function getAdminEndpoint(path) {
+      return `${FIREBASE_BASE}/${path}.json?key=${API_KEY}`;
+    }
+
+    /* User Profile & In-Memory Store */
+    let currentUID = localStorage.getItem('fleet_uid') || null;
+    let currentUsername = localStorage.getItem('fleet_username') || null;
+    let authMode = 'login'; // 'login' or 'register'
+    let clients = {}; // stored as keyed dictionary matching admin view
+    let logs = JSON.parse(localStorage.getItem('fbs_logs')) || [];
+    let blacklistData = {};
+    let systemConfig = {};
+
+    let totalSuccess = 0;
+    let totalErrors = 0;
+    let totalFailed = 0;
+
+    /* Authentication Functions */
+    function toggleAuthTab(mode) {
+      authMode = mode;
+      document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+      document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+      document.getElementById('auth-submit-btn').innerText = mode === 'login' ? 'Authenticate Session' : 'Create Identity';
+      document.getElementById('auth-error-msg').style.display = 'none';
+    }
+
+    function showAuthError(msg) {
+      const el = document.getElementById('auth-error-msg');
+      el.innerText = msg;
+      el.style.display = 'block';
+    }
+
+    async function handleAuthSubmit() {
+      const username = document.getElementById('auth-username').value.trim().toLowerCase();
+      const password = document.getElementById('auth-password').value.trim();
+
+      if (!username || !password) {
+        showAuthError('Username and password are required.');
+        return;
+      }
+
+      const uid = btoa(username).replace(/=/g, '').toLowerCase();
+
+      try {
+        const userRes = await fetch(getAdminEndpoint(`users/${uid}`));
+        const userData = await userRes.json();
+
+        if (authMode === 'register') {
+          if (userData) {
+            showAuthError('Username already registered. Please sign in.');
+            return;
+          }
+          // Register User Directly to Admin Database
+          const newUser = {
+            username: username,
+            password: password,
+            createdAt: new Date().toLocaleString(),
+            isBanned: false,
+            metric_success: 0,
+            metric_errors: 0,
+            metric_failed: 0,
+            clients: {}
+          };
+          await fetch(getAdminEndpoint(`users/${uid}`), {
+            method: 'PUT',
+            body: JSON.stringify(newUser)
+          });
+          loginSuccess(uid, username, newUser);
+        } else {
+          // Login Authentication Check
+          if (!userData) {
+            showAuthError('User not found. Check username or register.');
+            return;
+          }
+          if (userData.password !== password) {
+            showAuthError('Invalid passcode provided.');
+            return;
+          }
+          if (userData.isBanned === true) {
+            showAuthError('ACCESS REVOKED: This account has been banned by the Administrator.');
+            return;
+          }
+          loginSuccess(uid, username, userData);
+        }
+      } catch (err) {
+        showAuthError('Connection to Cloud Gateway failed.');
+      }
+    }
+
+    function loginSuccess(uid, username, data) {
+      currentUID = uid;
+      currentUsername = username;
+      localStorage.setItem('fleet_uid', uid);
+      localStorage.setItem('fleet_username', username);
+
+      document.getElementById('authModal').style.display = 'none';
+      document.getElementById('active-user-badge').style.display = 'inline-block';
+      document.getElementById('current-username').innerText = username;
+
+      totalSuccess = data.metric_success || 0;
+      totalErrors = data.metric_errors || 0;
+      totalFailed = data.metric_failed || 0;
+      clients = data.clients || {};
+
+      initApp();
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('fleet_uid');
+      localStorage.removeItem('fleet_username');
+      location.reload();
+    }
+
+    /* Core Initialization & Admin System Sync */
+    async function initApp() {
+      if (!currentUID) {
+        document.getElementById('authModal').style.display = 'flex';
+        return;
+      }
+      document.getElementById('authModal').style.display = 'none';
+      document.getElementById('active-user-badge').style.display = 'inline-block';
+      document.getElementById('current-username').innerText = currentUsername;
+
+      await syncWithAdminCore();
+      renderFleet();
+      renderLogs();
+    }
+
+    async function syncWithAdminCore() {
+      try {
+        const [userRes, blackRes, configRes] = await Promise.all([
+          fetch(getAdminEndpoint(`users/${currentUID}`)),
+          fetch(getAdminEndpoint('blacklist')),
+          fetch(getAdminEndpoint('system_config'))
+        ]);
+
+        const uData = await userRes.json();
+        blacklistData = await blackRes.json() || {};
+        systemConfig = await configRes.json() || {};
+
+        if (uData) {
+          if (uData.isBanned === true) {
+            alert('CRITICAL: Your account is banned by the System Admin.');
+            logoutUser();
+            return;
+          }
+          clients = uData.clients || {};
+          totalSuccess = uData.metric_success || 0;
+          totalErrors = uData.metric_errors || 0;
+          totalFailed = uData.metric_failed || 0;
+        }
+
+        // Apply Support Links from Admin
+        if (systemConfig.links) {
+          if (systemConfig.links.channel) {
+            document.getElementById('nav-link-channel').href = systemConfig.links.channel;
+          }
+          if (systemConfig.links.admin) {
+            document.getElementById('nav-link-admin').href = systemConfig.links.admin;
+          }
+        }
+
+        // Apply System Updates / Lockouts from Admin
+        if (systemConfig.updates) {
+          const bar = document.getElementById('announcement-bar');
+          if (systemConfig.updates.lockdown === true) {
+            bar.style.display = 'block';
+            bar.innerHTML = `⚠️ <b>SYSTEM LOCKOUT ACTIVE:</b> ${systemConfig.updates.message || 'Under Maintenance'} ${systemConfig.updates.downloadUrl ? `<a href="${systemConfig.updates.downloadUrl}" target="_blank" style="color:var(--accent-cyan); margin-left: 10px;">[Download Patch ${systemConfig.updates.version || ''}]</a>` : ''}`;
+            document.getElementById('btn-save').disabled = true;
+          } else if (systemConfig.updates.message) {
+            bar.style.display = 'block';
+            bar.innerHTML = `📢 <b>SYSTEM NOTICE:</b> ${systemConfig.updates.message}`;
+          }
+        }
+      } catch (e) {
+        console.warn("Sync status: Offline/Cache mode active.");
+      }
+    }
+
+    async function saveUserState() {
+      updateMetrics();
+      if (!currentUID) return;
+      try {
+        await Promise.all([
+          fetch(getAdminEndpoint(`users/${currentUID}/clients`), {
+            method: 'PUT',
+            body: JSON.stringify(clients)
+          }),
+          fetch(getAdminEndpoint(`users/${currentUID}/metric_success`), {
+            method: 'PUT',
+            body: JSON.stringify(totalSuccess)
+          }),
+          fetch(getAdminEndpoint(`users/${currentUID}/metric_errors`), {
+            method: 'PUT',
+            body: JSON.stringify(totalErrors)
+          }),
+          fetch(getAdminEndpoint(`users/${currentUID}/metric_failed`), {
+            method: 'PUT',
+            body: JSON.stringify(totalFailed)
+          })
+        ]);
+      } catch (e) {
+        console.error("Cloud persistence error", e);
+      }
+    }
+
+    function toggleSidebar(open) {
+      document.getElementById('sidebar').classList.toggle('open', open);
+      document.getElementById('overlay').classList.toggle('open', open);
+    }
+
+    function switchDashboard(viewId) {
+      document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+      const activeSec = document.getElementById(viewId);
+      if (activeSec) activeSec.classList.add('active');
+
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(viewId)) {
+          item.classList.add('active');
+        }
+      });
+      toggleSidebar(false);
+    }
+
+    /* Client Actions & Blacklist Check */
+    function isBlacklisted(url, key) {
+      for (let bid in blacklistData) {
+        const item = blacklistData[bid];
+        if (item.url && url.toLowerCase().includes(item.url.toLowerCase())) {
+          return item.reason || 'This database endpoint has been blacklisted by Administrator';
+        }
+        if (key && item.key && key.trim() === item.key.trim()) {
+          return item.reason || 'This API key has been blacklisted by Administrator';
+        }
+      }
+      return false;
+    }
+
+    async function handleSaveClient() {
+      const name = document.getElementById('client-name').value.trim();
+      let url = document.getElementById('client-url').value.trim();
+      const key = document.getElementById('client-key').value.trim();
+      const editCid = document.getElementById('edit-client-id').value;
+
+      if (!name || !url) {
+        alert('Client Name and Database URL are required.');
+        return;
+      }
+
+      if (url.endsWith('/')) url = url.slice(0, -1);
+
+      // Verify Blacklist from Admin
+      const banCheck = isBlacklisted(url, key);
+      if (banCheck) {
+        alert(`SECURITY VIOLATION: Endpoint Blocked!\nReason: ${banCheck}`);
+        return;
+      }
+
+      const clientData = {
+        name,
+        url,
+        key: key || null,
+        status: 'READY',
+        errorDetails: null,
+        lastPurged: 'Never',
+        lastWipedData: null
+      };
+
+      const cid = editCid ? editCid : 'c_' + Date.now();
+      clients[cid] = { ...clientData, ...(editCid ? clients[editCid] : {}), name, url, key: key || null };
+
+      await saveUserState();
+      cancelEdit();
+      renderFleet();
+      switchDashboard('view-clients');
+    }
+
+    function editClient(cid) {
+      const c = clients[cid];
+      document.getElementById('client-name').value = c.name;
+      document.getElementById('client-url').value = c.url;
+      document.getElementById('client-key').value = c.key || '';
+      document.getElementById('edit-client-id').value = cid;
+
+      document.getElementById('form-header').innerHTML = `
+        <svg class="svg-icon-lg" style="color: var(--accent-cyan);" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        Edit Configuration
+      `;
+      document.getElementById('btn-save').innerHTML = `
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Update Client
+      `;
+      document.getElementById('btn-cancel').style.display = 'inline-flex';
+      switchDashboard('view-add');
+    }
+
+    async function deleteClient(cid) {
+      if (confirm(`Remove "${clients[cid].name}" from fleet monitoring?`)) {
+        delete clients[cid];
+        await saveUserState();
+        renderFleet();
+      }
+    }
+
+    function cancelEdit() {
+      document.getElementById('client-name').value = '';
+      document.getElementById('client-url').value = '';
+      document.getElementById('client-key').value = '';
+      document.getElementById('edit-client-id').value = '';
+      document.getElementById('form-header').innerHTML = `
+        <svg class="svg-icon-lg" style="color: var(--accent-cyan);" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Register Firebase Database
+      `;
+      document.getElementById('btn-save').innerHTML = `
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Save Client
+      `;
+      document.getElementById('btn-cancel').style.display = 'none';
+    }
+
+    function buildUrl(c) {
+      let endpoint = `${c.url}/.json`;
+      if (c.key) {
+        const authParam = c.key.startsWith('AIzaSy') ? 'key' : 'auth';
+        endpoint += `?${authParam}=${encodeURIComponent(c.key)}`;
+      }
+      return endpoint;
+    }
+
+    async function purgeAllData(cid) {
+      const c = clients[cid];
+      
+      // Re-verify Blacklist
+      const banCheck = isBlacklisted(c.url, c.key);
+      if (banCheck) {
+        alert(`SECURITY VIOLATION: Endpoint Blocked by Admin.\nReason: ${banCheck}`);
+        return;
+      }
+
+      const isConfirmed = confirm(`CRITICAL WARNING: This action will permanently WIPE ALL DATA for "${c.name}". Proceed?`);
+      if (!isConfirmed) return;
+
+      const endpoint = buildUrl(c);
+      const timeNow = new Date().toLocaleString();
+
+      try {
+        let retrievedData = null;
+        try {
+          const fetchSnap = await fetch(endpoint, { method: 'GET' });
+          if (fetchSnap.ok) {
+            retrievedData = await fetchSnap.json();
+          }
+        } catch(e) {}
+
+        const response = await fetch(endpoint, { method: 'DELETE' });
+
+        if (response.ok) {
+          c.status = 'SUCCESS';
+          c.lastPurged = timeNow;
+          c.lastWipedData = retrievedData !== null ? retrievedData : { message: "Database was empty or null at purge." };
+          c.errorDetails = null;
+          totalSuccess++;
+          pushLog(timeNow, c.name, 'COMPLETE DATABASE WIPED (ROOT /)', 'color: #00ff66;');
+        } else if (response.status === 401 || response.status === 403) {
+          c.status = 'ERROR';
+          c.errorDetails = `HTTP ${response.status}: Database rules restricted access. Secret auth key required.`;
+          totalErrors++;
+          pushLog(timeNow, c.name, `ACCESS DENIED (HTTP ${response.status})`, 'color: #ffb703;');
+        } else {
+          c.status = 'FAILED';
+          c.errorDetails = `HTTP ${response.status}: ${response.statusText}`;
+          totalFailed++;
+          pushLog(timeNow, c.name, `PURGE FAILED: ${response.statusText}`, 'color: #ff3366;');
+        }
+      } catch (err) {
+        c.status = 'FAILED';
+        c.errorDetails = 'Network failure or CORS policy blocked the request.';
+        totalFailed++;
+        pushLog(timeNow, c.name, 'NETWORK / CORS ERROR OCCURRED', 'color: #ff3366;');
+      }
+
+      await saveUserState();
+      renderFleet();
+    }
+
+    function openInspector(cid) {
+      const c = clients[cid];
+      document.getElementById('modal-client-title').innerText = `Purged Data Snapshot // ${c.name}`;
+      document.getElementById('modal-timestamp').innerText = `Purged At: ${c.lastPurged || 'Never'}`;
+      
+      const jsonViewer = document.getElementById('modal-json-content');
+      if (c.lastWipedData) {
+        jsonViewer.innerText = JSON.stringify(c.lastWipedData, null, 2);
+      } else {
+        jsonViewer.innerText = '// No recorded purge payload found for this client node.';
+      }
+
+      document.getElementById('inspectModal').classList.add('open');
+    }
+
+    function closeModal(e) {
+      if (!e || e.target.id === 'inspectModal' || e.target.closest('.menu-btn')) {
+        document.getElementById('inspectModal').classList.remove('open');
+      }
+    }
+
+    function pushLog(time, name, msg, style) {
+      logs.unshift({ time, name, msg, style });
+      if (logs.length > 100) logs.pop();
+      localStorage.setItem('fbs_logs', JSON.stringify(logs));
+      renderLogs();
+    }
+
+    function clearLogs() {
+      logs = [];
+      localStorage.setItem('fbs_logs', JSON.stringify(logs));
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const terminal = document.getElementById('terminal-feed');
+      if (logs.length === 0) {
+        terminal.innerHTML = '<div style="color: var(--text-muted);">No activity records available.</div>';
+        return;
+      }
+      terminal.innerHTML = logs.map(l => `
+        <div class="log-line">
+          <span style="color: var(--text-muted);">[${l.time}]</span>
+          <span style="color: var(--accent-cyan); font-weight: bold;">[${l.name}]</span>
+          <span style="${l.style}">${l.msg}</span>
+        </div>
+      `).join('');
+    }
+
+    function updateMetrics() {
+      const count = Object.keys(clients).length;
+      document.getElementById('metric-clients').innerText = count;
+      document.getElementById('metric-success').innerText = totalSuccess;
+      document.getElementById('metric-errors').innerText = totalErrors;
+      document.getElementById('metric-failed').innerText = totalFailed;
+      document.getElementById('menu-client-count').innerText = count;
+      document.getElementById('nodes-count-display').innerText = count;
+    }
+
+    function renderFleet() {
+      const container = document.getElementById('client-cards-container');
+      updateMetrics();
+
+      const clientKeys = Object.keys(clients);
+      if (clientKeys.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 10px;">
+            No client nodes registered. Use "Register Client" menu to add targets.
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = clientKeys.map(cid => {
+        const c = clients[cid];
+        let badgeClass = 'badge-wait';
+        if (c.status === 'SUCCESS') badgeClass = 'badge-ok';
+        if (c.status === 'ERROR') badgeClass = 'badge-err';
+        if (c.status === 'FAILED') badgeClass = 'badge-fail';
+
+        return `
+          <div class="client-node">
+            <div class="client-header">
+              <div class="client-title-wrapper">
+                <svg class="svg-icon" style="color: var(--accent-cyan);" viewBox="0 0 24 24"><path d="M4 6h16v10H4zm18-2H2v14h7v2H7v2h10v-2h-2v-2h7V4z"/></svg>
+                <span class="client-name" title="${c.name}">${c.name}</span>
+              </div>
+              <span class="badge ${badgeClass}">${c.status}</span>
+            </div>
+            
+            <div class="detail-box">
+              <div class="detail-row">
+                <span class="detail-key">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                  Endpoint:
+                </span>
+                <span class="detail-val">${c.url}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-key">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  Target Scope:
+                </span>
+                <span class="detail-val" style="color: var(--accent-neon); font-weight: bold;">ROOT ( / )</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-key">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                  Auth Secret:
+                </span>
+                <span class="detail-val">${c.key ? 'CONFIGURED' : 'OPEN / NONE'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-key">
+                  <svg class="svg-icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                  Last Purged:
+                </span>
+                <span class="detail-val">${c.lastPurged || 'Never'}</span>
+              </div>
+            </div>
+
+            ${c.errorDetails ? `<div class="error-console">⚠️ ${c.errorDetails}</div>` : ''}
+
+            <div class="node-actions">
+              <button class="btn btn-danger" onclick="purgeAllData('${cid}')">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                Purge Database
+              </button>
+              <button class="btn btn-info" onclick="openInspector('${cid}')" ${!c.lastWipedData ? 'style="opacity:0.6;"' : ''}>
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                View Wiped Data
+              </button>
+              <button class="btn btn-secondary" onclick="editClient('${cid}')">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                Edit
+              </button>
+              <button class="btn btn-secondary" onclick="deleteClient('${cid}')">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                Remove
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Startup check
+    initApp();
+  </script>
+</body>
+</html>
